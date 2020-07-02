@@ -324,15 +324,13 @@ type CephStatus struct {
 		OverallStatus string `json:"overall_status"`
 	} `json:"health"`
 	OSDMap struct {
-		OSDMap struct {
-			Epoch          float64 `json:"epoch"`
-			NumOSDs        float64 `json:"num_osds"`
-			NumUpOSDs      float64 `json:"num_up_osds"`
-			NumInOSDs      float64 `json:"num_in_osds"`
-			Full           bool    `json:"full"`
-			NearFull       bool    `json:"nearfull"`
-			NumRemappedPGs float64 `json:"num_remapped_pgs"`
-		} `json:"osdmap"`
+		Epoch          float64 `json:"epoch"`
+		NumOSDs        float64 `json:"num_osds"`
+		NumUpOSDs      float64 `json:"num_up_osds"`
+		NumInOSDs      float64 `json:"num_in_osds"`
+		Full           bool    `json:"full"`
+		NearFull       bool    `json:"nearfull"`
+		NumRemappedPGs float64 `json:"num_remapped_pgs"`
 	} `json:"osdmap"`
 	PGMap struct {
 		PGsByState []struct {
@@ -389,13 +387,13 @@ func decodeStatusHealth(acc telegraf.Accumulator, data *CephStatus) error {
 // decodeStatusOsdmap decodes the OSD map portion of the output of 'ceph -s'
 func decodeStatusOsdmap(acc telegraf.Accumulator, data *CephStatus) error {
 	fields := map[string]interface{}{
-		"epoch":            data.OSDMap.OSDMap.Epoch,
-		"num_osds":         data.OSDMap.OSDMap.NumOSDs,
-		"num_up_osds":      data.OSDMap.OSDMap.NumUpOSDs,
-		"num_in_osds":      data.OSDMap.OSDMap.NumInOSDs,
-		"full":             data.OSDMap.OSDMap.Full,
-		"nearfull":         data.OSDMap.OSDMap.NearFull,
-		"num_remapped_pgs": data.OSDMap.OSDMap.NumRemappedPGs,
+		"epoch":            data.OSDMap.Epoch,
+		"num_osds":         data.OSDMap.NumOSDs,
+		"num_up_osds":      data.OSDMap.NumUpOSDs,
+		"num_in_osds":      data.OSDMap.NumInOSDs,
+		"full":             data.OSDMap.Full,
+		"nearfull":         data.OSDMap.NearFull,
+		"num_remapped_pgs": data.OSDMap.NumRemappedPGs,
 	}
 	acc.AddFields("ceph_osdmap", fields, map[string]string{})
 	return nil
