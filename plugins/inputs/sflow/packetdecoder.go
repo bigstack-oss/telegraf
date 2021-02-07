@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
+	"net"
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs/sflow/binaryio"
@@ -11,8 +13,10 @@ import (
 )
 
 type PacketDecoder struct {
-	onPacket func(p *V5Format)
-	Log      telegraf.Logger
+	onPacket     func(p *V5Format)
+	Log          telegraf.Logger
+	PortCache    []PortInfo
+	LatestCache  bool
 }
 
 func NewDecoder() *PacketDecoder {
@@ -27,6 +31,11 @@ func (d *PacketDecoder) debug(args ...interface{}) {
 
 func (d *PacketDecoder) OnPacket(f func(p *V5Format)) {
 	d.onPacket = f
+}
+
+func (d *PacketDecoder) UpdatePortCache(c []PortInfo) {
+	d.PortCache = c
+	d.LatestCache = true
 }
 
 func (d *PacketDecoder) Decode(r io.Reader) error {
@@ -319,6 +328,7 @@ func (d *PacketDecoder) decodeEthHeader(r io.Reader) (h EthHeader, err error) {
 		h.EtherTypeCode = tagOrEType
 	}
 	h.EtherType = ETypeMap[h.EtherTypeCode]
+	d.portCacheLookup(&h)
 	switch h.EtherType {
 	case "IPv4":
 		h.IPHeader, err = d.decodeIPv4Header(r)
@@ -330,6 +340,43 @@ func (d *PacketDecoder) decodeEthHeader(r io.Reader) (h EthHeader, err error) {
 		return h, err
 	}
 	return h, err
+}
+
+func (d *PacketDecoder) portCacheLookup(h *EthHeader) {
+	// check if it's openstack port mac
+	OspPortMacVender := "fa:16:3e:"
+	SrcMac := net.HardwareAddr(h.SourceMAC[:]).String()
+	DstMac := net.HardwareAddr(h.DestinationMAC[:]).String()
+	if ! strings.Contains(SrcMac, OspPortMacVender) && ! strings.Contains(DstMac, OspPortMacVender) {
+		return
+	}
+
+	// originator has higer priority
+	for i := range d.PortCache {
+		p := d.PortCache[i]
+		if SrcMac == p.MacAddr {
+			h.PortType = p.PortType
+			h.TenantId = p.TenantId
+			h.TenantName = p.TenantName
+			h.InstanceId = p.InstanceId
+			h.InstanceName = p.InstanceName
+			h.Direction = "egress"
+			return
+		}
+	}
+	for i := range d.PortCache {
+		p := d.PortCache[i]
+		if DstMac == p.MacAddr {
+			h.PortType = p.PortType
+			h.TenantId = p.TenantId
+			h.TenantName = p.TenantName
+			h.InstanceId = p.InstanceId
+			h.InstanceName = p.InstanceName
+			h.Direction = "ingress"
+			return
+		}
+	}
+	d.LatestCache = false
 }
 
 // https://en.wikipedia.org/wiki/IPv4#Header

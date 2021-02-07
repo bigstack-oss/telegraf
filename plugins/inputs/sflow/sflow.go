@@ -13,6 +13,9 @@ import (
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/internal"
 	"github.com/influxdata/telegraf/plugins/inputs"
+
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const sampleConfig = `
@@ -126,8 +129,86 @@ func (s *SFlow) read(acc telegraf.Accumulator, conn net.PacketConn) {
 			}
 			break
 		}
+		s.cacheOpenstackPortInfo()
 		s.process(acc, buf[:n])
 	}
+}
+
+func (s *SFlow) cacheOpenstackPortInfo() {
+	if s.decoder.LatestCache {
+		return
+	}
+
+	// Open up our database connection.
+	db, err := sql.Open("mysql", "root@unix(/var/lib/mysql/mysql.sock)/")
+	// if there is an error opening the connection, handle it
+	if err != nil {
+		s.Log.Errorf("Failed to connect to openstack database: %s", err)
+	}
+	defer db.Close()
+
+	// Execute the query
+	ports, err := db.Query(`
+select p.id,p.mac_address,p.project_id,p.device_id,i.display_name,k.name
+from neutron.ports p, nova.instances i, keystone.project k
+where p.device_id = i.uuid and p.project_id = k.id
+`)
+	if err != nil {
+		s.Log.Errorf("Failed to read openstack port info: %s", err)
+	}
+
+	var portCache []PortInfo
+	for ports.Next() {
+		// for each row, scan the result into our tag composite object
+		var id, tenantId, macAddr, instanceId, instanceName, tenantName sql.NullString
+		err = ports.Scan(&id, &macAddr, &tenantId, &instanceId, &instanceName, &tenantName)
+		if err != nil {
+			s.Log.Errorf("Failed to fetch openstack port data: %s", err)
+		}
+		p := PortInfo {
+			PortId: id.String,
+			PortType: "fixed",
+			MacAddr: macAddr.String,
+			TenantId: tenantId.String,
+			TenantName: tenantName.String,
+			InstanceId: instanceId.String,
+			InstanceName: instanceName.String,
+		}
+		portCache = append(portCache, p)
+	}
+
+	fips, err := db.Query(`
+select p.id,p.mac_address,f.fixed_port_id
+from neutron.floatingips f, neutron.ports p
+where p.id = f.floating_port_id and f.id = p.device_id
+`)
+
+	for fips.Next() {
+		// for each row, scan the result into our tag composite object
+		var id, macAddr, portId sql.NullString
+		err = fips.Scan(&id, &macAddr, &portId)
+		if err != nil {
+			s.Log.Errorf("Failed to fetch openstack floating ip data: %s", err)
+		}
+		for i := range portCache {
+			p := portCache[i]
+			if p.PortId == portId.String {
+				f := PortInfo {
+					PortId: id.String,
+					PortType: "floating",
+					MacAddr: macAddr.String,
+					TenantId: p.TenantId,
+					TenantName: p.TenantName,
+					InstanceId: p.InstanceId,
+					InstanceName: p.InstanceName,
+				}
+				portCache = append(portCache, f)
+			}
+		}
+	}
+
+	s.decoder.UpdatePortCache(portCache)
+	s.Log.Infof("Updated Openstack Port Cache")
 }
 
 func (s *SFlow) process(acc telegraf.Accumulator, buf []byte) {

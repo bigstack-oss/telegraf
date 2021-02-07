@@ -1,7 +1,7 @@
 package sflow
 
 import (
-	"strconv"
+	//"strconv"
 	"time"
 
 	"github.com/influxdata/telegraf"
@@ -11,16 +11,17 @@ import (
 func makeMetrics(p *V5Format) ([]telegraf.Metric, error) {
 	now := time.Now()
 	metrics := []telegraf.Metric{}
-	tags := map[string]string{
-		"agent_address": p.AgentAddress.String(),
-	}
+	tags := map[string]string{}
+	//tags := map[string]string{
+	//	"agent_address": p.AgentAddress.String(),
+	//}
 	fields := map[string]interface{}{}
 	for _, sample := range p.Samples {
-		tags["input_ifindex"] = strconv.FormatUint(uint64(sample.SampleData.InputIfIndex), 10)
-		tags["output_ifindex"] = strconv.FormatUint(uint64(sample.SampleData.OutputIfIndex), 10)
-		tags["sample_direction"] = sample.SampleData.SampleDirection
-		tags["source_id_index"] = strconv.FormatUint(uint64(sample.SampleData.SourceIDIndex), 10)
-		tags["source_id_type"] = strconv.FormatUint(uint64(sample.SampleData.SourceIDType), 10)
+		//tags["input_ifindex"] = strconv.FormatUint(uint64(sample.SampleData.InputIfIndex), 10)
+		//tags["output_ifindex"] = strconv.FormatUint(uint64(sample.SampleData.OutputIfIndex), 10)
+		//tags["sample_direction"] = sample.SampleData.SampleDirection
+		//tags["source_id_index"] = strconv.FormatUint(uint64(sample.SampleData.SourceIDIndex), 10)
+		//tags["source_id_type"] = strconv.FormatUint(uint64(sample.SampleData.SourceIDType), 10)
 		fields["drops"] = sample.SampleData.Drops
 		fields["sampling_rate"] = sample.SampleData.SamplingRate
 
