@@ -133,6 +133,7 @@ func (s *SFlow) cacheOpenstackPortInfo() {
 	// if there is an error opening the connection, handle it
 	if err != nil {
 		s.Log.Errorf("Failed to connect to openstack database: %s", err)
+		return
 	}
 	defer db.Close()
 
@@ -144,7 +145,9 @@ where p.device_id = i.uuid and p.project_id = k.id
 `)
 	if err != nil {
 		s.Log.Errorf("Failed to read openstack port info: %s", err)
+		return
 	}
+	defer ports.Close()
 
 	var portCache []PortInfo
 	for ports.Next() {
@@ -171,6 +174,11 @@ select p.id,p.mac_address,f.fixed_port_id
 from neutron.floatingips f, neutron.ports p
 where p.id = f.floating_port_id and f.id = p.device_id
 `)
+	if err != nil {
+		s.Log.Errorf("Failed to read openstack floating ip data: %s", err)
+		return
+	}
+	defer fips.Close()
 
 	for fips.Next() {
 		// for each row, scan the result into our tag composite object
