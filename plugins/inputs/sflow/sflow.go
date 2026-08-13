@@ -30,6 +30,11 @@ type SFlow struct {
 	ServiceAddress string      `toml:"service_address"`
 	ReadBufferSize config.Size `toml:"read_buffer_size"`
 
+	// OpenstackDSN is a go-sql-driver DSN pointing at the OpenStack control
+	// database. When empty the OpenStack port lookup is disabled entirely, which
+	// is the correct behaviour on nodes that do not host the database.
+	OpenstackDSN string `toml:"openstack_dsn"`
+
 	Log telegraf.Logger `toml:"-"`
 
 	addr    net.Addr
@@ -124,12 +129,12 @@ func (s *SFlow) read(acc telegraf.Accumulator, conn net.PacketConn) {
 }
 
 func (s *SFlow) cacheOpenstackPortInfo() {
-	if s.decoder.LatestCache {
+	if s.OpenstackDSN == "" || s.decoder.LatestCache {
 		return
 	}
 
 	// Open up our database connection.
-	db, err := sql.Open("mysql", "root@unix(/var/lib/mysql/mysql.sock)/")
+	db, err := sql.Open("mysql", s.OpenstackDSN)
 	// if there is an error opening the connection, handle it
 	if err != nil {
 		s.Log.Errorf("Failed to connect to openstack database: %s", err)
