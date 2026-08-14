@@ -41,11 +41,6 @@ See the [CONFIGURATION.md][CONFIGURATION.md] for more details.
   ## Set the size of the operating system's receive buffer.
   ##   example: read_buffer_size = "64KiB"
   # read_buffer_size = ""
-
-  ## DSN of the OpenStack control database, used to tag flows with the owning
-  ## tenant and instance. Leave empty to disable the lookup.
-  ##   example: openstack_dsn = "telegraf:secret@unix(/var/lib/mysql/mysql.sock)/"
-  # openstack_dsn = ""
 ```
 
 ## Metrics

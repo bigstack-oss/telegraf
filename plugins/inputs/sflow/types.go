@@ -114,7 +114,7 @@ func (h RawPacketHeaderFlowData) GetTags() map[string]string {
 	} else {
 		t = map[string]string{}
 	}
-	//t["header_protocol"] = HeaderProtocolMap[h.HeaderProtocol]
+	t["header_protocol"] = HeaderProtocolMap[h.HeaderProtocol]
 	return t
 }
 func (h RawPacketHeaderFlowData) GetFields() map[string]interface{} {
@@ -139,12 +139,6 @@ type EthHeader struct {
 	TagControlInformation uint16
 	EtherTypeCode         uint16
 	EtherType             string
-	PortType              string
-	TenantId              string
-	TenantName            string
-	InstanceId            string
-	InstanceName          string
-	Direction             string
 	IPHeader              IPHeader
 }
 
@@ -158,14 +152,6 @@ func (h EthHeader) GetTags() map[string]string {
 	t["src_mac"] = net.HardwareAddr(h.SourceMAC[:]).String()
 	t["dst_mac"] = net.HardwareAddr(h.DestinationMAC[:]).String()
 	t["ether_type"] = h.EtherType
-	if len(h.PortType) > 0 {
-		t["port_type"] = h.PortType
-		t["tenant_id"] = h.TenantId
-		t["tenant_name"] = h.TenantName
-		t["instance_id"] = h.InstanceId
-		t["instance_name"] = h.InstanceName
-		t["direction"] = h.Direction
-	}
 	return t
 }
 func (h EthHeader) GetFields() map[string]interface{} {
@@ -273,7 +259,6 @@ type TCPHeader struct {
 
 func (h TCPHeader) GetTags() map[string]string {
 	t := map[string]string{
-		"proto": "tcp",
 		"dst_port": strconv.FormatUint(uint64(h.DestinationPort), 10),
 		"src_port": strconv.FormatUint(uint64(h.SourcePort), 10),
 	}
@@ -296,7 +281,6 @@ type UDPHeader struct {
 
 func (h UDPHeader) GetTags() map[string]string {
 	t := map[string]string{
-		"proto": "udp",
 		"dst_port": strconv.FormatUint(uint64(h.DestinationPort), 10),
 		"src_port": strconv.FormatUint(uint64(h.SourcePort), 10),
 	}
@@ -306,14 +290,4 @@ func (h UDPHeader) GetFields() map[string]interface{} {
 	return map[string]interface{}{
 		"udp_length": h.UDPLength,
 	}
-}
-
-type PortInfo struct {
-	PortId                string
-	PortType              string
-	MacAddr               string
-	TenantId              string
-	TenantName            string
-	InstanceId            string
-	InstanceName          string
 }
